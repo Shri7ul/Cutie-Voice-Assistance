@@ -30,4 +30,14 @@
    ```bash
    python cutie.py
    ```
-   
+## 👨‍💻 Author
+
+**InHuman**
+
+Inspired by Tony Stark's JARVIS  
+Instructor Bappy bhai
+
+
+### 📜 License
+
+This project is open-source and free to use for learning purposes.
