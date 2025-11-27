@@ -3,3 +3,4 @@ pyttsx3==2.90
 pyaudio
 wikipedia
 google.generativeai
+dotenv
