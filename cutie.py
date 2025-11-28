@@ -102,7 +102,7 @@ def greeting():
         speak("Good Afternoon!")   
     else:
         speak("Good Evening!")  
-    speak("I am your assistant. Please tell me how may I help you")
+    speak("I am Cutie .I am your personal voice assistant. Please tell me how may I help you")
 
 greeting()
 
@@ -112,7 +112,6 @@ while True:
     if "your name" in query:
         speak("I am Cutie.")
         logging.info("User asked for assistant's name.")
-
     elif "time" in query:
         strTime = datetime.datetime.now().strftime("%H:%M:%S")    
         speak(f"The time is {strTime}")
