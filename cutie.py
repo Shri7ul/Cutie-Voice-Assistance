@@ -9,6 +9,8 @@ import random
 import subprocess
 import google.generativeai as genai
 from dotenv import load_dotenv
+import requests
+import pyautogui
 
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -104,6 +106,85 @@ def greeting():
         speak("Good Evening!")  
     speak("I am Cutie .I am your personal voice assistant. Please tell me how may I help you")
 
+def weather(query):
+    CITY = "Dhaka"   # default city
+    API_KEY = os.getenv("WEATHER_API_KEY")
+
+    if "in" in query:
+        CITY = query.split("in")[1].strip()
+
+    url = f"http://api.openweathermap.org/data/2.5/weather?q={CITY}&appid={API_KEY}&units=metric"
+
+    try:
+        data = requests.get(url).json()
+        if data["cod"] != 200:
+                speak("I couldn't find that city.")
+        else:
+            temp = data["main"]["temp"]
+            condition = data["weather"][0]["description"]
+            speak(f"The temperature in {CITY} is {temp} degrees with {condition}.")
+    except:
+        speak("Sorry, I couldn't fetch the weather right now.")
+
+def news():
+    
+    API = os.getenv("NEWS_API_KEY")
+    url = f"https://newsapi.org/v2/top-headlines?country=us&apiKey={API}"
+
+    try:
+        data = requests.get(url).json()
+        articles = data.get("articles", [])[:5]  # top 5 news
+
+        speak("Here are the headlines.")
+
+        for idx, article in enumerate(articles, 1):
+            speak(f"Headline {idx}: {article['title']}")
+    except:
+        speak("Sorry, I couldn't fetch the news right now.")
+
+def play_music():
+    music_dir = r"D:\Inception bd\Project\Cutie-Voice-Assistance\Music"
+        
+    try:
+        songs = os.listdir(music_dir)
+            
+        if not songs:
+            speak("Your music folder is empty.")
+        else:
+            song = random.choice(songs)
+            os.startfile(os.path.join(music_dir, song))
+            speak("Playing a random song.")
+    except:
+        speak("I couldn't access your music folder.")
+
+
+def take_screenshot():
+    try:
+        time_stamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        file_name = f"Screenshot_{time_stamp}.png"
+        save_path = os.path.join("Screenshots", file_name)
+
+        # folder তৈরি করে নেবে যদি না থাকে
+        os.makedirs("Screenshots", exist_ok=True)
+
+        image = pyautogui.screenshot()
+        image.save(save_path)
+
+        speak("Screenshot taken and saved successfully.")
+    except:
+        speak("Sorry, I could not take the screenshot.")
+
+def extract_google_query(text):
+    remove_words = ["search", "on", "google", "for", "about"]
+    
+    q = text.lower()
+    for w in remove_words:
+        q = q.replace(w, " ")
+
+    return " ".join(q.split()).strip()
+
+
+
 greeting()
 
 while True:
@@ -193,6 +274,35 @@ while True:
     
         except:
             speak("Sorry, I couldn't find that on Wikipedia.")
+    
+    # PLAY MUSIC
+    elif "play music" in query or "play song" in query:
+        play_music()
+
+    elif "weather" in query:
+        weather(query)
+
+    elif "news" in query or "headlines" in query:
+        news()
+
+    elif "screenshot" in query or "take a screenshot" in query:
+        take_screenshot()
+
+    elif "google" in query or "search on google" in query:
+        topic = extract_google_query(query)
+
+        if topic == "":
+            speak("Please tell me what to search on Google.")
+        else:
+            speak(f"Searching Google for {topic}.")
+            webbrowser.open(f"https://www.google.com/search?q={topic}")
+
+            # AI summary (optional but powerful)
+            summary = gemini_response(f"Explain shortly: {topic}")
+            speak(summary)
+
+
+
     else:
         response = gemini_response(query)
         speak(response)
