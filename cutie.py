@@ -11,6 +11,14 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 import requests
 import pyautogui
+import threading
+import time
+import re
+speech_lock = threading.Lock()
+import pyperclip
+
+NOTES_FILE = "notes.txt"
+
 
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -45,8 +53,10 @@ def speak(text):
     returns:
          voice
     """
-    engine.say(text)
-    engine.runAndWait()
+    with speech_lock:
+        engine.say(text)
+        engine.runAndWait()
+        time.sleep(0.3)  # small delay to avoid voice overlapping with microphone
 
 
 # speak("Hi I am Sami friend of Mojo")
@@ -183,6 +193,121 @@ def extract_google_query(text):
 
     return " ".join(q.split()).strip()
 
+def add_note(text):
+    with open(NOTES_FILE, "a", encoding="utf-8") as f:
+        f.write(text + "\n")
+    speak("Note added.")
+
+def read_notes():
+    if not os.path.exists(NOTES_FILE) or os.path.getsize(NOTES_FILE) == 0:
+        speak("You have no notes.")
+        return
+    with open(NOTES_FILE, "r", encoding="utf-8") as f:
+        speak("Here are your notes.")
+        for line in f:
+            speak(line.strip())
+
+def delete_notes():
+    if os.path.exists(NOTES_FILE):
+        open(NOTES_FILE, "w").close()
+    speak("All notes deleted.")
+
+# def auto_type_mode():
+#     speak("What should I type?")
+#     time.sleep(0.3)   # IMPORTANT extra buffer
+#     text = takeCommand().lower()
+
+#     if text == "" or text == "none":
+#         speak("I didn’t catch that. Please try again.")
+#         return
+
+#     pyautogui.write(text, interval=0.03)
+#     speak("Typing completed.")
+
+def read_clipboard():
+    try:
+        text = pyperclip.paste()
+        if text.strip() == "":
+            speak("Your clipboard is empty.")
+        else:
+            speak("Your clipboard contains:")
+            speak(text)
+    except:
+        speak("Sorry, I couldn't read your clipboard.")
+
+# def extract_reminder_time(query):
+#     query = query.lower()
+
+#     pattern = r'(\d+)\s*(second|seconds|minute|minutes|hour|hours)'
+#     matches = re.findall(pattern, query)
+
+#     if not matches:
+#         return None
+
+#     total_seconds = 0
+#     for amount, unit in matches:
+#         amount = int(amount)
+#         if "second" in unit:
+#             total_seconds += amount
+#         elif "minute" in unit:
+#             total_seconds += amount * 60
+#         elif "hour" in unit:
+#             total_seconds += amount * 3600
+
+#     return total_seconds
+# def reminder_thread(wait_seconds, task):
+#     speak(f"Okay boss, I will remind you in {wait_seconds//60} minutes.")
+#     time.sleep(wait_seconds)
+#     speak(f"Boss, reminder: {task}")
+
+def get_today_schedule():
+    try:
+        from google.oauth2.credentials import Credentials
+        from google_auth_oauthlib.flow import InstalledAppFlow
+        from googleapiclient.discovery import build
+
+        SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
+
+        creds = None
+        if os.path.exists('token.json'):
+            creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+        if not creds or not creds.valid:
+            flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
+            creds = flow.run_local_server(port=0)
+            with open('token.json', 'w') as token:
+                token.write(creds.to_json())
+
+        service = build('calendar', 'v3', credentials=creds)
+
+        today = datetime.datetime.now().date()
+        start = datetime.datetime.combine(today, datetime.time.min).isoformat() + 'Z'
+        end = datetime.datetime.combine(today, datetime.time.max).isoformat() + 'Z'
+
+        events_result = service.events().list(
+            calendarId='primary', timeMin=start, timeMax=end,
+            singleEvents=True, orderBy='startTime'
+        ).execute()
+        
+        events = events_result.get('items', [])
+
+        if not events:
+            speak("Boss, you have no schedule today.")
+            return
+
+        speak(f"Boss, you have {len(events)} events today.")
+
+        for event in events:
+            start_time = event['start'].get('dateTime', event['start'].get('date'))
+            time_fmt = datetime.datetime.fromisoformat(start_time.replace("Z", "")).strftime("%I:%M %p")
+            speak(f"At {time_fmt}: {event['summary']}")
+            print(f"At {time_fmt}: {event['summary']}")
+
+    except Exception as e:
+        print(e)
+        speak("Sorry boss, I couldn't fetch your schedule.")
+
+
+
 
 
 greeting()
@@ -300,6 +425,43 @@ while True:
             # AI summary (optional but powerful)
             summary = gemini_response(f"Explain shortly: {topic}")
             speak(summary)
+
+    # ADD NOTE
+    elif "make a note" in query or "write this down" in query:
+        speak("What should I write?")
+        note_text = takeCommand().lower()
+        if note_text:
+            add_note(note_text)
+
+    # SHOW NOTES
+    elif "show my notes" in query or "show my note" in query:
+        read_notes()
+
+    # DELETE NOTES
+    elif "delete my notes" in query or "clear notes" in query:
+        delete_notes()
+    
+    elif "clipboard" in query or "what's on my clipboard" in query or "read my clipboard" in query:
+        read_clipboard()
+
+    # elif "remind me" in query:
+    #     wait_seconds = extract_reminder_time(query)
+
+    #     if not wait_seconds:
+    #         speak("Please tell me how long later I should remind you.")
+    #         continue
+
+    #     # extract the task after 'to'
+    #     task = ""
+    #     if "to" in query:
+    #         task = query.split("to", 1)[1].strip()
+    #     else:
+    #         task = "your task"
+
+    #     t = threading.Thread(target=reminder_thread, args=(wait_seconds, task))
+    #     t.start()
+    elif "today's schedule" in query or "todays schedule" in query or "today schedule" in query:
+        get_today_schedule()
 
 
 
