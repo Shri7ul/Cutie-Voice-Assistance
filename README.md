@@ -1,9 +1,4 @@
-Here you go, Boss — **one-shot, ready-to-paste, clean Markdown README**.
-Just copy → paste into **README.md**. No extra formatting needed.
 
----
-
-````md
 # 🌸 Cutie – Your Personal AI Voice Assistant
 *A fully offline + online hybrid assistant built with Python, inspired by JARVIS.*
 
@@ -116,6 +111,7 @@ Cutie-Voice-Assistance/
 │── requirements.txt
 │── notes.txt
 │── logs/
+│── Music/
 │── Screenshots/
 │── README.md
 │── .env
@@ -139,9 +135,9 @@ Cutie-Voice-Assistance/
 
 ## 👨‍💻 Author
 
-**InHuman**
-Inspired by *Tony Stark’s JARVIS*
-Guided by **Instructor Bappy bhai**
+**InHuman**   
+Inspired by *Tony Stark’s JARVIS*  
+Guided by **Instructor Bappy bhai**  
 
 ---
 

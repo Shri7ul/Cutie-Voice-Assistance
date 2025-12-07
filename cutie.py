@@ -775,10 +775,10 @@ def organize_folder():
     speak("Boss, your folder is now organized.")
 
 def change_voice(mode):
-    if mode == "cutie":
+    if mode == "jarvis":
         engine.setProperty("voice", voices[0].id)
         engine.setProperty("rate", 135)
-        speak("Cutie mode activated boss.")
+        speak("Jarvis mode activated boss.")
     
     elif mode == "soft":
         engine.setProperty("voice", voices[1].id)
