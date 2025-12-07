@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 
+=======
+>>>>>>> 48b1cbd42abc63b8bd4ecdc8b52f77ca3940b355
 # 🌸 Cutie – Your Personal AI Voice Assistant
 *A fully offline + online hybrid assistant built with Python, inspired by JARVIS.*
 
@@ -135,9 +138,15 @@ Cutie-Voice-Assistance/
 
 ## 👨‍💻 Author
 
+<<<<<<< HEAD
 **InHuman**   
 Inspired by *Tony Stark’s JARVIS*  
 Guided by **Instructor Bappy bhai**  
+=======
+**InHuman**  
+Inspired by *Tony Stark’s JARVIS*  
+Guided by **Instructor Bappy bhai**
+>>>>>>> 48b1cbd42abc63b8bd4ecdc8b52f77ca3940b355
 
 ---
 
