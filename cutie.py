@@ -8,6 +8,7 @@ import wikipedia
 import random
 import subprocess
 import google.generativeai as genai
+from youtube_transcript_api import YouTubeTranscriptApi
 from dotenv import load_dotenv
 import requests
 import pyautogui
@@ -21,9 +22,11 @@ import ctypes
 from monitorcontrol import get_monitors
 from gtts import gTTS
 from playsound import playsound
-
-
-
+from pydub import AudioSegment
+from pydub.playback import play
+import tkinter as tk
+from tkinter import filedialog
+from tkinter import Tk, filedialog
 
 
 NOTES_FILE = "notes.txt"
@@ -65,12 +68,23 @@ def speak(text):
         engine.say(text)
         engine.runAndWait()
         time.sleep(0.3)
-def speak_bangla(text):
-    filename = f"bn_{random.randint(1,9999)}.mp3"
-    tts = gTTS(text=text, lang='bn')
-    tts.save(filename)
-    playsound(filename)
-    os.remove(filename)
+def speak_bangla(text, speed=1.3):
+    """Bangla speech with increased speed"""
+    try:
+        tts = gTTS(text=text, lang='bn')
+        file = "bangla_voice.mp3"
+        tts.save(file)
+
+        sound = AudioSegment.from_file(file)
+
+        # speed increase (1.3 = 30% faster)
+        faster_sound = sound.speedup(playback_speed=speed)
+
+        play(faster_sound)
+        os.remove(file)
+
+    except:
+        print("Error in Bangla TTS")
 
 
 # speak("Hello, I am your assistant. How can I help you today?")
@@ -90,7 +104,7 @@ def takeCommand():
     try:
         print("Recognizing...")
         query = r.recognize_google(audio, language='en-in')
-        print(f"User said: {query}\n")
+        print(f"InHuman: {query}\n")
         return query
 
     except Exception as e:
@@ -135,7 +149,8 @@ def greeting():
         speak("Good Afternoon!")   
     else:
         speak("Good Evening!")  
-    speak("I am Cutie .I am your personal voice assistant. Please tell me how may I help you")
+    speak("I am Cutie, here to make your work easier. Just tell me how I can help.")
+
 
 def weather(query):
     CITY = "Dhaka"   # default city
@@ -195,7 +210,7 @@ def take_screenshot():
         file_name = f"Screenshot_{time_stamp}.png"
         save_path = os.path.join("Screenshots", file_name)
 
-        # folder তৈরি করে নেবে যদি না থাকে
+        
         os.makedirs("Screenshots", exist_ok=True)
 
         image = pyautogui.screenshot()
@@ -364,43 +379,76 @@ def get_today_schedule():
         speak("Sorry boss, I couldn't fetch your schedule.")
 
 def extract_video_id(url):
-    url = url.strip()
+    try:
+        url = url.strip()
 
-    # Case 1: Standard watch?v=
-    if "watch?v=" in url:
-        return url.split("watch?v=")[1].split("&")[0]
+        patterns = [
+            r"v=([a-zA-Z0-9_-]{11})",
+            r"youtu\.be/([a-zA-Z0-9_-]{11})",
+            r"shorts/([a-zA-Z0-9_-]{11})",
+            r"embed/([a-zA-Z0-9_-]{11})"
+        ]
 
-    # Case 2: youtu.be short link
-    if "youtu.be/" in url:
-        return url.split("youtu.be/")[1].split("?")[0]
+        for p in patterns:
+            match = re.search(p, url)
+            if match:
+                return match.group(1)
 
-    # Case 3: shorts
-    if "/shorts/" in url:
-        return url.split("/shorts/")[1].split("?")[0]
+        return None
 
-    # Case 4: mobile link m.youtube.com
-        # same as watch?v=
-    if "v=" in url:
-        return url.split("v=")[1].split("&")[0]
-
-    return None
+    except:
+        return None
 
 
-from youtube_transcript_api import YouTubeTranscriptApi
 
 def get_youtube_transcript(url):
     try:
         video_id = extract_video_id(url)
 
         if not video_id:
+            speak("Boss, I couldn't extract the video ID.")
             return None
 
-        transcript = YouTubeTranscriptApi.get_transcript(video_id)
-        full_text = " ".join([t["text"] for t in transcript])
+        print("Extracted video ID:", video_id)
+
+        transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
+        full_text = " ".join(t["text"] for t in transcript_list)
+
         return full_text
 
-    except:
+    except Exception as e:
+        print("Transcript Error:", e)
+        speak("Boss, I couldn't fetch the transcript.")
         return None
+def summarize_youtube_video(url):
+    try:
+        genai.configure(api_key=GEMINI_API_KEY)
+
+        model = genai.GenerativeModel(
+            model_name="gemini-2.0-flash",
+            tools=[
+                {
+                    "youtube_video": {
+                        "enable_youtube_video": True
+                    }
+                }
+            ]
+        )
+
+        prompt = (
+            "Summarize this YouTube video in 6–10 bullet points. "
+            "Make it simple and exam-focused. "
+            f"Video URL: {url}"
+        )
+
+        response = model.generate_content(prompt)
+        return response.text
+
+    except Exception as e:
+        print("Error:", e)
+        return None
+
+
 
 def summarize_text(text):
     prompt = f"Summarize the following content in simple bullet points:\n{text}"
@@ -421,7 +469,7 @@ def start_timer(minutes):
         time.sleep(1)
         seconds -= 1
 
-    if timer_running:  # only alert if not stopped manually
+    if timer_running: 
         speak("Boss, your study timer is over. Take a short break.")
     timer_running = False
 
@@ -576,27 +624,176 @@ def tell_joke(query):
         speak(joke)
 def introduce_cutie():
     text = (
-        "আসসালামু আলাইকুম বস, আমি কিউটি! "
-        "আমি আপনার স্টাডি অ্যাসিস্ট্যান্ট এবং পার্সোনাল এআই হেল্পার। "
-        "আমি আপনার জন্য অনেক কাজ করতে পারি। যেমন— "
-        "গুগল সার্চ করা, উইকিপিডিয়ায় তথ্য বের করা, আপনার নোট লিখে রাখা, "
-        "ক্লিপবোর্ড পড়া এবং সারমারি করে নোটসে যোগ করা, "
-        "গুগল ক্যালেন্ডার থেকে আজকের শিডিউল জানানো, "
-        "স্টাডি টাইমার চালানো, ইউটিউব ভিডিওর সারমারি দেয়া, "
-        "পিসির ভলিউম কন্ট্রোল, ব্রাইটনেস কন্ট্রোল, স্ক্রিনশট নেওয়া, "
-        "ফোল্ডার ওপেন করা, মিউজিক প্লে করা, এবং আরও অনেক কিছু। "
-        "বস, আপনি যা বলবেন আমি সেটাই করে দেবো।"
+        "Hello Boss, I am Cutie — your personal AI assistant and study partner. "
+        "I'm here to make your tasks easier and help you stay focused. "
+        "I can search the internet for you, fetch information from Wikipedia, "
+        "take notes, read your clipboard, create summaries, "
+        "manage your study timer, check today's schedule from your Google Calendar, "
+        "find your files, organize folders, control your PC's volume and brightness, "
+        "take screenshots, play music, and even lift your mood when you feel low. "
+        "Just tell me what you need, Boss — I'm ready."
+    )
+    speak(text)
+
+
+
+
+
+# KEEP THIS OUTSIDE THE FUNCTION
+user_subjects = [
+    "Computer Architecture",
+    "Electronics",
+    "Data Structure and Algorithm 2",
+    "Data Structure and Algorithm Lab",
+    "Electronics Lab"
+]
+
+def generate_study_plan():
+    today = datetime.datetime.now().strftime("%A")
+    
+    prompt = (
+        f"Create a simple, realistic study plan for a CSE student. "
+        f"Today is {today}. These are the subjects: {', '.join(user_subjects)}. "
+        "Plan style:\n"
+        "- 4 to 6 short study blocks\n"
+        "- Mention specific topics\n"
+        "- Include breaks\n"
+        "- Very short sentences\n"
+        "Return the plan in bullet points."
     )
 
-    speak_bangla(text)
+    response = gemini_response(prompt)
+    return response
 
 
+def tab_manager(query):
+    query = query.lower()
+
+    if "next tab" in query:
+        pyautogui.hotkey("ctrl", "tab")
+        speak("Switching to next tab.")
+
+    elif "previous tab" in query:
+        pyautogui.hotkey("ctrl", "shift", "tab")
+        speak("Switching to previous tab.")
+
+    elif "first tab" in query:
+        pyautogui.hotkey("ctrl", "1")
+        speak("Opening first tab.")
+
+    else:
+        # detect number in query
+        nums = re.findall(r'\d+', query)
+
+        # also support words (like tab five)
+        words = {
+            "one": "1", "two": "2", "three": "3", "four": "4", "five": "5",
+            "six": "6", "seven": "7", "eight": "8", "nine": "9"
+        }
+
+        for w in words:
+            if w in query:
+                nums = [words[w]]
+
+        if nums:
+            tab_number = nums[0]
+            pyautogui.hotkey("ctrl", tab_number)
+            speak(f"Switching to tab {tab_number}.")
+        else:
+            speak("Boss, please tell me which tab to switch to.")
+
+    
 
 
+def organize_folder():
+    root = Tk()
+    root.withdraw()
+
+    folder = filedialog.askdirectory()
+
+    if not folder:
+        speak("Boss, no folder was selected.")
+        return
+
+    speak("Organizing your folder, boss. Please wait...")
+
+    file_types = {
+        "Documents": [".pdf", ".docx", ".txt", ".pptx"],
+        "Images": [".jpg", ".jpeg", ".png"],
+        "Videos": [".mp4", ".mkv"],
+        "Software": [".exe", ".msi"],
+        "Archives": [".zip", ".rar"],
+    }
+
+    for filename in os.listdir(folder):
+        src = os.path.join(folder, filename)
+
+        if os.path.isdir(src):
+            continue
+
+        ext = os.path.splitext(filename)[1].lower()
+        moved = False
+
+        for category, exts in file_types.items():
+            if ext in exts:
+                dst = os.path.join(folder, category)
+                os.makedirs(dst, exist_ok=True)
+                os.rename(src, os.path.join(dst, filename))
+                moved = True
+                break
+
+        if not moved:
+            dst = os.path.join(folder, "Others")
+            os.makedirs(dst, exist_ok=True)
+            os.rename(src, os.path.join(dst, filename))
+
+    speak("Boss, your folder is now organized.")
 
 
+    for filename in os.listdir(folder):
+        src = os.path.join(folder, filename)
 
+        if os.path.isdir(src):
+            continue
 
+        ext = os.path.splitext(filename)[1].lower()
+
+        moved = False
+        for category, extensions in file_types.items():
+            if ext in extensions:
+                dst_folder = os.path.join(folder, category)
+                os.makedirs(dst_folder, exist_ok=True)
+                os.rename(src, os.path.join(dst_folder, filename))
+                moved = True
+                break
+
+        if not moved:
+            dst_folder = os.path.join(folder, "Others")
+            os.makedirs(dst_folder, exist_ok=True)
+            os.rename(src, os.path.join(dst_folder, filename))
+
+    speak("Boss, your folder is now organized.")
+
+def change_voice(mode):
+    if mode == "cutie":
+        engine.setProperty("voice", voices[0].id)
+        engine.setProperty("rate", 135)
+        speak("Cutie mode activated boss.")
+    
+    elif mode == "soft":
+        engine.setProperty("voice", voices[1].id)
+        engine.setProperty("rate", 150)
+        speak("Soft voice activated boss.")
+    
+    elif mode == "fast":
+        engine.setProperty("voice", voices[1].id)
+        engine.setProperty("rate", 185)
+        speak("Fast voice activated boss.")
+    
+    elif mode == "study":
+        engine.setProperty("voice", voices[1].id)
+        engine.setProperty("rate", 200)
+        speak("Study mode activated boss.")
 
 
 
@@ -831,7 +1028,8 @@ while True:
         except:
             speak("Sorry boss, I couldn't explain that.")
 
-    elif "find" in query or "search file" in query:
+    elif ("find" in query) or ("search file" in query) or ("search a file" in query):
+
         speak("Okay boss, what file should I search?")
         keyword = takeCommand().lower()
 
@@ -961,21 +1159,49 @@ while True:
     elif "joke" in query or "tell me a joke" in query or "make me laugh" in query:
         tell_joke(query)
 
+    elif "close tab" in query or "close this tab" in query or "close browser" in query:
+        pyautogui.hotkey("ctrl", "w")
+        speak("Closing the tab, boss.")
+
+    elif "next tab" in query or "previous tab" in query or "switch to tab" in query or "first tab" in query:
+        tab_manager(query)
+
+    elif "minimize window" in query or "minimize this window" in query or "minimize" in query:
+        try:
+            pyautogui.hotkey("alt", "space")
+            time.sleep(0.1)
+            pyautogui.press("n")
+            speak("Window minimized, boss.")
+        except:
+            speak("Sorry boss, I could not minimize the window.")
 
 
+    elif "close window" in query or "close this window" in query:
+        pyautogui.hotkey("alt", "f4")
+        speak("Window closed, boss.")
 
+    elif "study plan" in query or "plan my day" in query or "today's plan" in query:
+        speak("Boss, generating your study plan...")
+        plan = generate_study_plan()
+        speak(plan)
 
+    elif ("organize this folder" in query) or ("organize folder" in query) or "organised this folder" in query or "organised folder" in query:
+        organize_folder()
 
+    elif "cutie" in query:
+        change_voice("cutie")
+
+    elif "soft mode" in query:
+        change_voice("soft")
+
+    elif "fast voice" in query:
+        change_voice("fast")
+
+    elif "study mode" in query:
+        change_voice("study")
 
 
     else:
         response = gemini_response(query)
         speak(response)
         logging.info("User asked for others question")
-
-
-
-
-    
-
-
