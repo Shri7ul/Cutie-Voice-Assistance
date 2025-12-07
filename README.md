@@ -133,8 +133,8 @@ Cutie-Voice-Assistance/
 
 ## 👨‍💻 Author
 
-**InHuman**
-Inspired by *Tony Stark’s JARVIS*
+**InHuman**  
+Inspired by *Tony Stark’s JARVIS*  
 Guided by **Instructor Bappy bhai**
 
 ---
