@@ -1,9 +1,3 @@
-Here you go, Boss — **one-shot, ready-to-paste, clean Markdown README**.
-Just copy → paste into **README.md**. No extra formatting needed.
-
----
-
-````md
 # 🌸 Cutie – Your Personal AI Voice Assistant
 *A fully offline + online hybrid assistant built with Python, inspired by JARVIS.*
 
